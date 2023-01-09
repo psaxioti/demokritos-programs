@@ -3,7 +3,7 @@
 Name:           demokritos-programs
 Version:        1.4
 Release:        0
-Group:          Productivity/Science/Physics
+Group:          Productivity/Scientific/Physics
 License:        GPL-3.0
 Summary:        Programs made at Demokritos lab
 Url:            https://github.com/psaxioti/demokritos-programs

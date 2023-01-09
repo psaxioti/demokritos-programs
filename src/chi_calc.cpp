@@ -11,7 +11,7 @@ using namespace std;
 
    int main (int argc, char *argsv[]){
    string csfile=argsv[1], experfile=argsv[2], line;
-   double c, d, dum,chi=0,logchi=0;
+   double c, d, dum,chi=0,logchi=0,logchi_sot=0,chi_sot=0;
    double mass=atof(argsv[3]);
    double proj;
    vector<double> enerexp, csexp,ener,xs;
@@ -76,11 +76,16 @@ using namespace std;
    gsl_spline_init (spline, &ener[0], &xs[0], ener.size());
 
    for (int lala=0; lala < enerexp.size(); lala++){
-	 logchi=logchi+pow(log10(gsl_spline_eval (spline, enerexp[lala], acc))-log10(csexp[lala]),2);
+         double logexp,logtal;
+         logexp=abs(log10(csexp[lala]));
+         logtal=abs(log10(gsl_spline_eval (spline, enerexp[lala], acc)));
+	 logchi=logchi+pow(logexp-logtal,2);
 	 chi=chi+pow(gsl_spline_eval (spline, enerexp[lala], acc)-csexp[lala],2);
+	 logchi_sot=logchi+(pow(logexp-logtal,2)/logtal);
+	 chi_sot=chi_sot+(pow(gsl_spline_eval (spline, enerexp[lala], acc)-csexp[lala],2)/gsl_spline_eval (spline, enerexp[lala], acc));
    }
-   if(flag)cout << logchi/enerexp.size()<<"	"<<chi/enerexp.size()<< " Caution!!!!! not all experimental data points were processed!!!!!!!! " <<  argsv[1] <<endl;
-   else cout << logchi/enerexp.size()<<"	"<<chi/enerexp.size()<< "	" <<  argsv[1]  <<endl;
+   if(flag)cout << logchi/enerexp.size()<<"	"<<chi/enerexp.size()<<" "<<logchi_sot<<" "<<logchi_sot/enerexp.size()<<" "<< chi_sot<<" "<<chi_sot/enerexp.size()<<" Caution!!!!! not all experimental data points were processed!!!!!!!! " <<  argsv[1] <<endl;
+   else cout << logchi/enerexp.size()<<"	"<<chi/enerexp.size()<<" "<<logchi_sot<<" "<<logchi_sot/enerexp.size()<<" "<< chi_sot<<" "<<chi_sot/enerexp.size()<< "	" <<  argsv[1]  <<endl;
 		
    gsl_spline_free (spline);
    gsl_interp_accel_free (acc);

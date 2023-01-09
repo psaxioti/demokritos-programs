@@ -13,24 +13,46 @@ using namespace std;
    double c, d, e;
 //   double logos;
    vector<double> ener1, cs1, ener2, cs2;
+   string line;
+   double value;
 
     
    ifstream mfile;
    mfile.open (metafile.c_str());
    while(mfile.peek()=='#') mfile.ignore(1000,'\n');
-   while(mfile>>c>>d>>e){
-      ener1.push_back(c);
-      cs1.push_back(d);
+   while(getline(mfile, line)){
+      istringstream iss(line);
+      for (int i=0 ; i<100 ; i++){
+         if(iss>>value){
+            if(i==0) ener1.push_back(value);
+            if(i==1) cs1.push_back(value);
+         }
+//         else break;
+      }
    }
+//   while(mfile>>c>>d>>e){
+//      ener1.push_back(c);
+//      cs1.push_back(d);
+//   }
    mfile.close();
 
    ifstream tfile;
    tfile.open (totalfile.c_str());
    while(tfile.peek()=='#') tfile.ignore(1000,'\n');
-   while(tfile>>c>>d>>e){
-      ener2.push_back(c);
-      cs2.push_back(d);
+   while(getline(tfile, line)){
+      istringstream iss(line);
+      for (int i=0 ; i<100 ; i++){
+         if(iss>>value){
+            if(i==0) ener2.push_back(value);
+            if(i==1) cs2.push_back(value);
+         }
+//         else break;
+      }
    }
+//   while(tfile>>c>>d>>e){
+//      ener2.push_back(c);
+//      cs2.push_back(d);
+//   }
    tfile.close();	
 
 //cout << ener1.size() <<endl;
