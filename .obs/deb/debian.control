@@ -1,0 +1,11 @@
+Source: demokritos-programs
+Section: Productivity/Science/Physics
+Priority: optional
+Maintainer: Axiotis Michail
+Build-Depends: debhelper (>= 9), libgsl-dev
+
+Package: demokritos-programs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Programs made at Demokritos lab
+ This package has useful programs made and used at the demokritos Lab
