@@ -72,7 +72,7 @@ using namespace std;
 */   expfile.close();	
 
    gsl_interp_accel *acc = gsl_interp_accel_alloc ();
-   gsl_spline *spline = gsl_spline_alloc (gsl_interp_cspline, ener.size());
+   gsl_spline *spline = gsl_spline_alloc (gsl_interp_linear, ener.size());
    gsl_spline_init (spline, &ener[0], &xs[0], ener.size());
 
    for (int lala=0; lala < enerexp.size(); lala++){
