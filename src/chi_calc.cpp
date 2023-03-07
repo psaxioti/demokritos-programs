@@ -33,7 +33,6 @@ int main(int argc, char *argsv[]) {
    infile.open(csfile.c_str());
    while (infile.peek() == '#')
       infile.ignore(1000, '\n');
-   float dum;
    while (infile >> c >> d >> dum >> dum) {
       ener.push_back(mass * c / (mass + proj));
       xs.push_back(d);
