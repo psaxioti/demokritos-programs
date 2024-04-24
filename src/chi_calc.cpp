@@ -1,7 +1,9 @@
 #include <cmath>
 #include <fstream>
 #include <gsl/gsl_errno.h>
+#include <gsl/gsl_sf_erf.h>
 #include <gsl/gsl_spline.h>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -9,41 +11,70 @@
 
 using namespace std;
 
-int main(int argc, char *argsv[]) {
-   string csfile = argsv[1], experfile = argsv[2], line;
-   double c, d, dum, chi = 0, logchi = 0, logchi_sot = 0, chi_sot = 0;
-   double mass = atof(argsv[3]);
-   double proj;
-   vector<double> enerexp, csexp, ener, xs;
-   bool flag = false;
+void exitCode(const int ErrorCode);
+void printUsage();
 
-   switch (*argsv[4]) {
-      case 'p':
-         proj = 1.007825;
-         break;
-      case 'n':
-         proj = 1.008665;
-         break;
-      case 'a':
-         proj = 4.002603;
-         break;
+int main(const int argc, const char *argsv[]) {
+   if (argc != 3 && argc != 5)
+      exitCode(1);
+
+   ifstream TalysCSfile(argsv[1]);
+   if (!TalysCSfile.good())
+      exitCode(2);
+
+   ifstream ExperimentalCSfile(argsv[2]);
+   if (!ExperimentalCSfile.good())
+      exitCode(3);
+
+   bool cmFlag = false;
+   double TargetMass = 0;
+   double ProjectileMass = 0;
+   if (argc == 5) {
+      TargetMass = atof(argsv[3]);
+      switch (*argsv[4]) {
+         case 'p':
+            ProjectileMass = 1.007825;
+            break;
+         case 'n':
+            ProjectileMass = 1.008665;
+            break;
+         case 'a':
+            ProjectileMass = 4.002603;
+            break;
+         default:
+            exitCode(4);
+            break;
+      }
+      cmFlag = true;
    }
 
-   ifstream infile;
-   infile.open(csfile.c_str());
-   while (infile.peek() == '#')
-      infile.ignore(1000, '\n');
-   while (infile >> c >> d >> dum >> dum) {
-      ener.push_back(mass * c / (mass + proj));
-      xs.push_back(d);
+   vector<double> TalysEn, TalysCS;
+   TalysEn.clear();
+   TalysCS.clear();
+
+   while (TalysCSfile.peek() == '#')
+      TalysCSfile.ignore(1000, '\n');
+   double col1, col2, dum;
+   while (TalysCSfile >> col1 >> col2 >> dum >> dum) {
+      if (cmFlag)
+         TalysEn.push_back(TargetMass * col1 / (TargetMass + ProjectileMass));
+      else
+         TalysEn.push_back(col1);
+      TalysCS.push_back(col2);
    }
-   infile.close();
+   TalysCSfile.close();
 
-   ifstream expfile;
-   expfile.open(experfile.c_str());
+   vector<double> ExperimentalEn, ExperimentalCS, ExperimentalCSError;
+   bool ExperimentaPointOutsideTalysFlag = false;
+   ExperimentalEn.clear();
+   ExperimentalCS.clear();
+   ExperimentalCSError.clear();
 
+   while (ExperimentalCSfile.peek() == '#')
+      ExperimentalCSfile.ignore(1000, '\n');
    vector<vector<double>> expdata;
-   while (getline(expfile, line)) {
+   string line;
+   while (getline(ExperimentalCSfile, line)) {
       vector<double> data;
       double value;
       istringstream iss(line);
@@ -53,45 +84,82 @@ int main(int argc, char *argsv[]) {
       expdata.push_back(data);
    }
    for (vector<vector<double>>::size_type i = 0, size = expdata.size(); i < size; ++i) {
-      if (expdata[i][0] >= ener[0] && expdata[i][0] <= ener[ener.size() - 1]) {
-         enerexp.push_back(expdata[i][0]);
-         csexp.push_back(expdata[i][1]);
+      if (expdata[i][0] >= TalysEn[0] && expdata[i][0] <= TalysEn[TalysEn.size() - 1]) {
+         ExperimentalEn.push_back(expdata[i][0]);
+         ExperimentalCS.push_back(expdata[i][1]);
+         if (expdata[i].size() >= 3 && expdata[i][2] > 0)
+            ExperimentalCSError.push_back(expdata[i][2]);
+         else
+            ExperimentalCSError.push_back(expdata[i][1]);
+
       } else
-         flag = true;
+         ExperimentaPointOutsideTalysFlag = true;
    }
    expdata.clear();
-
-   /*   while(expfile>>c>>d){
-         cout << c << "   " << ener[0] << "   "<< ener[ener.size()-1]<<"  "<< (c>=ener[0] && c<=ener[ener.size()-1])<<endl;
-         if(c>=ener[0] && c<=ener[ener.size()-1]){
-            enerexp.push_back(c);
-            csexp.push_back(d);
-         }
-         else flag=true;
-      }
-   */
-   expfile.close();
+   ExperimentalCSfile.clear();
 
    gsl_interp_accel *acc = gsl_interp_accel_alloc();
-   gsl_spline *spline = gsl_spline_alloc(gsl_interp_linear, ener.size());
-   gsl_spline_init(spline, &ener[0], &xs[0], ener.size());
+   gsl_spline *spline = gsl_spline_alloc(gsl_interp_linear, TalysEn.size());
+   gsl_spline_init(spline, &TalysEn[0], &TalysCS[0], TalysEn.size());
 
-   for (int lala = 0; lala < enerexp.size(); lala++) {
-      double logexp, logtal;
-      logexp = abs(log10(csexp[lala]));
-      logtal = abs(log10(gsl_spline_eval(spline, enerexp[lala], acc)));
-      logchi = logchi + pow(logexp - logtal, 2);
-      chi = chi + pow(gsl_spline_eval(spline, enerexp[lala], acc) - csexp[lala], 2);
-      logchi_sot = logchi + (pow(logexp - logtal, 2) / logtal);
-      chi_sot = chi_sot + (pow(gsl_spline_eval(spline, enerexp[lala], acc) - csexp[lala], 2) / gsl_spline_eval(spline, enerexp[lala], acc));
+   double ChiSquare = 0.;
+   double FrmsExponential = 0.;
+   for (size_t i = 0; i < ExperimentalEn.size(); ++i) {
+      double CurrentEn = ExperimentalEn[i];
+      double CurrentExperimentalCS = ExperimentalCS[i];
+      double CurrentExperimentalCSError = ExperimentalCSError[i];
+      double TalysCSInterpolated = gsl_spline_eval(spline, CurrentEn, acc);
+
+      double Distance = TalysCSInterpolated - CurrentExperimentalCS;
+      double NormalizedDistance = Distance / CurrentExperimentalCSError;
+      double CoverE = TalysCSInterpolated / CurrentExperimentalCS;
+
+      double r = CoverE;
+      if (CurrentExperimentalCSError != CurrentExperimentalCS) {
+         double x = abs(NormalizedDistance) / sqrt(2);
+         r = 1 + ((CoverE - 1) * gsl_sf_erf(x));
+      }
+
+      ChiSquare += pow(NormalizedDistance, 2);
+
+      FrmsExponential += pow(log(r), 2);
    }
-   if (flag)
-      cout << logchi / enerexp.size() << "	" << chi / enerexp.size() << " " << logchi_sot << " " << logchi_sot / enerexp.size() << " " << chi_sot << " " << chi_sot / enerexp.size() << " Caution!!!!! not all experimental data points were processed!!!!!!!! " << argsv[1] << endl;
-   else
-      cout << logchi / enerexp.size() << "	" << chi / enerexp.size() << " " << logchi_sot << " " << logchi_sot / enerexp.size() << " " << chi_sot << " " << chi_sot / enerexp.size() << "	" << argsv[1] << endl;
+   ChiSquare /= ExperimentalEn.size();
+   FrmsExponential = exp(sqrt(FrmsExponential / ExperimentalEn.size()));
+
+   cout << setw(12) << left << setprecision(8) << ChiSquare;
+   cout << setw(12) << left << setprecision(8) << FrmsExponential;
+   if (ExperimentaPointOutsideTalysFlag)
+      cout << " Caution!!!!! not all experimental data points were processed!!!!!!!!";
+   cout << " " << argsv[1] << endl;
 
    gsl_spline_free(spline);
    gsl_interp_accel_free(acc);
 
    return 0;
+}
+
+void exitCode(const int ErrorCode) {
+   switch (ErrorCode) {
+      case 1:
+         printUsage();
+         break;
+      case 2:
+         cerr << "Talys cs file cannot be opened!" << endl;
+         cerr << "Check file provided and try again!" << endl;
+         break;
+      case 3:
+         cerr << "Experimental cs file cannot be opened!" << endl;
+         cerr << "Check file provided and try again!" << endl;
+         break;
+      case 4:
+         cerr << "Unknown projectile symbol! Has to be one of p, a or n" << endl;
+         break;
+   }
+   exit(ErrorCode);
+}
+
+void printUsage() {
+   cerr << "Something wrong with command arguments!!!" << endl;
+   cerr << "Exiting!!!!!!!!!" << endl;
 }
