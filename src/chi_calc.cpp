@@ -54,14 +54,25 @@ int main(const int argc, const char *argsv[]) {
 
    while (TalysCSfile.peek() == '#')
       TalysCSfile.ignore(1000, '\n');
-   double col1, col2, dum;
-   while (TalysCSfile >> col1 >> col2 >> dum >> dum) {
-      if (cmFlag)
-         TalysEn.push_back(TargetMass * col1 / (TargetMass + ProjectileMass));
-      else
-         TalysEn.push_back(col1);
-      TalysCS.push_back(col2);
+   vector<vector<double>> Talysdata;
+   string line;
+   while (getline(TalysCSfile, line)) {
+      vector<double> data;
+      double value;
+      istringstream iss(line);
+      while (iss >> value) {
+         data.push_back(value);
+      }
+      Talysdata.push_back(data);
    }
+   double Factor = 1.;
+   if (cmFlag)
+      Factor = TargetMass / (TargetMass + ProjectileMass);
+   for (vector<vector<double>>::size_type i = 0, size = Talysdata.size(); i < size; ++i) {
+      TalysEn.push_back(Factor * Talysdata[i][0]);
+      TalysCS.push_back(Talysdata[i][1]);
+   }
+   Talysdata.clear();
    TalysCSfile.close();
 
    vector<double> ExperimentalEn, ExperimentalCS, ExperimentalCSError;
@@ -73,7 +84,6 @@ int main(const int argc, const char *argsv[]) {
    while (ExperimentalCSfile.peek() == '#')
       ExperimentalCSfile.ignore(1000, '\n');
    vector<vector<double>> expdata;
-   string line;
    while (getline(ExperimentalCSfile, line)) {
       vector<double> data;
       double value;
